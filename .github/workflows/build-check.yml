@@ -1,0 +1,49 @@
+name: Build Check (temporary validation)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1.328.0
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
+          cache-version: 0
+      - name: Install UglifyJS
+        run: npm install -g uglify-js
+      - name: Minify JS files
+        run: |
+          uglifyjs assets/js/plugins/jquery.greedy-navigation.js assets/js/_main.js assets/js/theme.js -c -m -o assets/js/main.min.js
+      - name: Build with Jekyll
+        run: bundle exec jekyll build --baseurl "/LJT-Homepage"
+        env:
+          JEKYLL_ENV: production
+      - name: Verify rendered content
+        run: |
+          set -e
+          echo '== _site/publications =='
+          ls -1 _site/publications | head -50
+          echo '== title checks on home page =='
+          for t in "Junteng Liu" "Personal Details" "Academic Background" "Research Experience" "Publications" "Skills and Research Expertise" "Contact Information" "SynLogic" "Perception Bottleneck" "Universal Truthfulness Hyperplane" "In-Context Sharpness" "C-Eval" "Composing Parameter-Efficient" "jliugi@connect.ust.hk" "Vicent0205" "tbK9jl4AAAAJ" "junteng88716710"; do
+            if grep -q "$t" _site/index.html; then echo "OK: $t"; else echo "MISSING: $t"; exit 1; fi
+          done
+          echo '== publications index checks =='
+          for t in "SynLogic" "Perception Bottleneck" "Universal Truthfulness" "In-Context Sharpness" "C-Eval" "Composing Parameter-Efficient"; do
+            if grep -q "$t" _site/publications/index.html; then echo "OK pub: $t"; else echo "MISSING pub: $t"; exit 1; fi
+          done
+          echo 'ALL CHECKS PASSED'
